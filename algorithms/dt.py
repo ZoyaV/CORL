@@ -18,6 +18,8 @@ from torch.nn import functional as F  # noqa
 from torch.utils.data import DataLoader, IterableDataset
 from tqdm.auto import tqdm, trange  # noqa
 import wandb
+import d3rlpy
+from sklearn.model_selection import train_test_split
 
 
 @dataclass
@@ -161,10 +163,43 @@ def load_d4rl_trajectories(
     }
     return traj, info
 
+# def load_pogema_trajectories(dataset):
+#     #dataset = gym.make(env_name).get_dataset()
+#     dataset = d3rlpy.dataset.MDPDataset.load("mixed_dataset_10_00_5000.h5")
+#     train_episodes, test_episodes = train_test_split(dataset, test_size=0.2, shuffle = True)
+#     traj, traj_len = [], []
+
+#     data_, episode_step = defaultdict(list), 0
+#     episode_data = dict()
+#     traj = []
+#     traj_len = []
+#     full_data = {"observations":[]}
+#     for i in range(len(dataset)):
+#         episode_data["observations"] = dataset[i].observations
+#         full_data["observations"] +=  dataset[i].observations.tolist()
+#         episode_data["actions"] = dataset[i].actions
+#         episode_data["rewards"] = dataset[i].rewards
+#         episode_data["returns"] = discounted_cumsum(
+#                 episode_data["rewards"], gamma=1
+#              )
+#         episode_len = len(dataset[i].rewards)
+
+#         traj.append(episode_data)
+#         traj_len.append(episode_len)
+        
+#     full_data["observations"] =  np.asarray(full_data["observations"])
+#     # needed for normalization, weighted sampling, other stats can be added also
+#     info = {
+#         "obs_mean": full_data["observations"].mean(0, keepdims=True),
+#         "obs_std": full_data["observations"].std(0, keepdims=True) + 1e-6,
+#         "traj_lens": np.array(traj_len),
+#     }
+#     return traj, info
+
 
 class SequenceDataset(IterableDataset):
     def __init__(self, env_name: str, seq_len: int = 10, reward_scale: float = 1.0):
-        self.dataset, info = load_d4rl_trajectories(env_name, gamma=1.0)
+        self.dataset, info = load_d4rl_trajectories(env_name, 1)
         self.reward_scale = reward_scale
         self.seq_len = seq_len
 
