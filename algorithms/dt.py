@@ -1,12 +1,10 @@
-# inspiration:
-# 1. https://github.com/kzl/decision-transformer/blob/master/gym/decision_transformer/models/decision_transformer.py  # noqa
-# 2. https://github.com/karpathy/minGPT
 from typing import Any, DefaultDict, Dict, List, Optional, Tuple, Union
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 import os
 import random
 import uuid
+import sys
 
 import d4rl  # noqa
 import gym  # noqa
@@ -21,12 +19,29 @@ import wandb
 import d3rlpy
 from sklearn.model_selection import train_test_split
 
+sys.path.append("./pogema-appo")
+print("--------------")
+import os
+cwd = os.getcwd()
+print(cwd)
+print("--------------")
+from pomapf.wrappers import MatrixObservationWrapper
+import gym
+# noinspection PyUnresolvedReferences
+import pomapf
+from pogema import GridConfig
+from gym.wrappers import FrameStack
 
+from torch import nn
+import torch 
+import numpy as np
+
+  
 @dataclass
 class TrainConfig:
     # wandb params
     project: str = "CORL"
-    group: str = "DT-D4RL"
+    group: str = "DT-POGEMA"
     name: str = "DT"
     # model params
     embedding_dim: int = 128
@@ -39,7 +54,7 @@ class TrainConfig:
     embedding_dropout: float = 0.1
     max_action: float = 1.0
     # training params
-    env_name: str = "halfcheetah-medium-v2"
+    env_name: str = "pogema"
     learning_rate: float = 1e-4
     betas: Tuple[float, float] = (0.9, 0.999)
     weight_decay: float = 1e-4
@@ -47,12 +62,12 @@ class TrainConfig:
     batch_size: int = 64
     update_steps: int = 100_000
     warmup_steps: int = 10_000
-    reward_scale: float = 0.001
+    reward_scale: float = 1
     num_workers: int = 4
     # evaluation params
     target_returns: Tuple[float, ...] = (12000.0, 6000.0)
-    eval_episodes: int = 100
-    eval_every: int = 10_000
+    eval_episodes: int = 10
+    eval_every: int = 1500
     # general params
     checkpoints_path: Optional[str] = None
     deterministic_torch: bool = False
@@ -130,76 +145,42 @@ def discounted_cumsum(x: np.ndarray, gamma: float) -> np.ndarray:
     return cumsum
 
 
-def load_d4rl_trajectories(
-    env_name: str, gamma: float = 1.0
-) -> Tuple[List[DefaultDict[str, np.ndarray]], Dict[str, Any]]:
-    dataset = gym.make(env_name).get_dataset()
-    traj, traj_len = [], []
-
-    data_, episode_step = defaultdict(list), 0
-    for i in trange(dataset["rewards"].shape[0], desc="Processing trajectories"):
-        data_["observations"].append(dataset["observations"][i])
-        data_["actions"].append(dataset["actions"][i])
-        data_["rewards"].append(dataset["rewards"][i])
-
-        if dataset["terminals"][i] or dataset["timeouts"][i]:
-            episode_data = {k: np.array(v, dtype=np.float32) for k, v in data_.items()}
-            # return-to-go if gamma=1.0, just discounted returns else
-            episode_data["returns"] = discounted_cumsum(
-                episode_data["rewards"], gamma=gamma
-            )
-            traj.append(episode_data)
-            traj_len.append(episode_step)
-            # reset trajectory buffer
-            data_, episode_step = defaultdict(list), 0
-
-        episode_step += 1
-
-    # needed for normalization, weighted sampling, other stats can be added also
-    info = {
-        "obs_mean": dataset["observations"].mean(0, keepdims=True),
-        "obs_std": dataset["observations"].std(0, keepdims=True) + 1e-6,
-        "traj_lens": np.array(traj_len),
-    }
-    return traj, info
-
-# def load_pogema_trajectories(dataset):
-#     #dataset = gym.make(env_name).get_dataset()
-#     dataset = d3rlpy.dataset.MDPDataset.load("mixed_dataset_10_00_5000.h5")
-#     train_episodes, test_episodes = train_test_split(dataset, test_size=0.2, shuffle = True)
+# def load_d4rl_trajectories(
+#     env_name: str, gamma: float = 1.0
+# ) -> Tuple[List[DefaultDict[str, np.ndarray]], Dict[str, Any]]:
+#     dataset = gym.make(env_name).get_dataset()
 #     traj, traj_len = [], []
 
 #     data_, episode_step = defaultdict(list), 0
-#     episode_data = dict()
-#     traj = []
-#     traj_len = []
-#     full_data = {"observations":[]}
-#     for i in range(len(dataset)):
-#         episode_data["observations"] = dataset[i].observations
-#         full_data["observations"] +=  dataset[i].observations.tolist()
-#         episode_data["actions"] = dataset[i].actions
-#         episode_data["rewards"] = dataset[i].rewards
-#         episode_data["returns"] = discounted_cumsum(
-#                 episode_data["rewards"], gamma=1
-#              )
-#         episode_len = len(dataset[i].rewards)
+#     for i in trange(dataset["rewards"].shape[0], desc="Processing trajectories"):
+#         data_["observations"].append(dataset["observations"][i])
+#         data_["actions"].append(dataset["actions"][i])
+#         data_["rewards"].append(dataset["rewards"][i])
 
-#         traj.append(episode_data)
-#         traj_len.append(episode_len)
-        
-#     full_data["observations"] =  np.asarray(full_data["observations"])
+#         if dataset["terminals"][i] or dataset["timeouts"][i]:
+#             episode_data = {k: np.array(v, dtype=np.float32) for k, v in data_.items()}
+#             # return-to-go if gamma=1.0, just discounted returns else
+#             episode_data["returns"] = discounted_cumsum(
+#                 episode_data["rewards"], gamma=gamma
+#             )
+#             traj.append(episode_data)
+#             traj_len.append(episode_step)
+#             # reset trajectory buffer
+#             data_, episode_step = defaultdict(list), 0
+
+#         episode_step += 1
+
 #     # needed for normalization, weighted sampling, other stats can be added also
 #     info = {
-#         "obs_mean": full_data["observations"].mean(0, keepdims=True),
-#         "obs_std": full_data["observations"].std(0, keepdims=True) + 1e-6,
+#         "obs_mean": dataset["observations"].mean(0, keepdims=True),
+#         "obs_std": dataset["observations"].std(0, keepdims=True) + 1e-6,
 #         "traj_lens": np.array(traj_len),
 #     }
 #     return traj, info
 
-
 class SequenceDataset(IterableDataset):
     def __init__(self, env_name: str, seq_len: int = 10, reward_scale: float = 1.0):
-        self.dataset, info = load_d4rl_trajectories(env_name, 1)
+        self.dataset, info = load_pogema_trajectories(env_name)
         self.reward_scale = reward_scale
         self.seq_len = seq_len
 
@@ -293,10 +274,11 @@ class DecisionTransformer(nn.Module):
     def __init__(
         self,
         state_dim: int,
+        state_shape,
         action_dim: int,
         seq_len: int = 10,
         episode_len: int = 1000,
-        embedding_dim: int = 128,
+        embedding_dim: int = 512,
         num_layers: int = 4,
         num_heads: int = 8,
         attention_dropout: float = 0.0,
@@ -311,7 +293,7 @@ class DecisionTransformer(nn.Module):
         self.out_norm = nn.LayerNorm(embedding_dim)
         # additional seq_len embeddings for padding timesteps
         self.timestep_emb = nn.Embedding(episode_len + seq_len, embedding_dim)
-        self.state_emb = nn.Linear(state_dim, embedding_dim)
+        self.state_emb = ResNetEncoder(state_shape, embedding_dim) ### Change to ResNet
         self.action_emb = nn.Linear(action_dim, embedding_dim)
         self.return_emb = nn.Linear(1, embedding_dim)
 
@@ -327,7 +309,8 @@ class DecisionTransformer(nn.Module):
                 for _ in range(num_layers)
             ]
         )
-        self.action_head = nn.Sequential(nn.Linear(embedding_dim, action_dim), nn.Tanh())
+        #self.action_head = nn.Sequential(nn.Linear(embedding_dim, action_dim), nn.Tanh())
+        self.action_head = nn.Sequential(nn.Linear(embedding_dim, 5), nn.Softmax(dim = -1))
         self.seq_len = seq_len
         self.embedding_dim = embedding_dim
         self.state_dim = state_dim
@@ -358,10 +341,34 @@ class DecisionTransformer(nn.Module):
         batch_size, seq_len = states.shape[0], states.shape[1]
         # [batch_size, seq_len, emb_dim]
         time_emb = self.timestep_emb(time_steps)
-        state_emb = self.state_emb(states) + time_emb
-        act_emb = self.action_emb(actions) + time_emb
+       # 
+        states = states.permute(0, 1, 3, 4, 2).to(torch.float32)
+        state_emb = self.state_emb(states)
+       # print(state_emb.shape)
+      #  print(time_emb.shape)
+        state_emb = state_emb + time_emb
+       # print(actions.shape)
+        actions = actions.reshape(-1,1).to(torch.float32)
+        try:
+            action_emb = self.action_emb(actions).reshape(64,20,128)
+        except:
+            action_emb = self.action_emb(actions).reshape(1,-1,128)
+        
+       # print(action_emb.shape)
+       # print(time_emb.shape)
+        act_emb = action_emb + time_emb
+     #   print(returns_to_go.shape)
         returns_emb = self.return_emb(returns_to_go.unsqueeze(-1)) + time_emb
-
+        
+#         print("-----------orig-----------")
+#         print(returns_to_go.shape)
+#         print(states.shape)
+#         print(actions.shape)
+        
+#         print("-----------emb-----------")
+#         print(returns_emb.shape)
+#         print(state_emb.shape)
+#         print(act_emb.shape)
         # [batch_size, seq_len * 3, emb_dim], (r_0, s_0, a_0, r_1, s_1, a_1, ...)
         sequence = (
             torch.stack([returns_emb, state_emb, act_emb], dim=1)
@@ -386,7 +393,11 @@ class DecisionTransformer(nn.Module):
         out = self.out_norm(out)
         # [batch_size, seq_len, action_dim]
         # predict actions only from state embeddings
-        out = self.action_head(out[:, 1::3]) * self.max_action
+       # print(out[:, 1::3].shape)
+        action_head = self.action_head(out[:, 1::3])
+       # print("ACT OUT")
+       # print(action_head)
+        out = action_head * self.max_action
         return out
 
 
@@ -399,7 +410,7 @@ def eval_rollout(
     device: str = "cpu",
 ) -> Tuple[float, float]:
     states = torch.zeros(
-        1, model.episode_len + 1, model.state_dim, dtype=torch.float, device=device
+        (1, model.episode_len + 1, model.state_dim,21,21), dtype=torch.float, device=device
     )
     actions = torch.zeros(
         1, model.episode_len, model.action_dim, dtype=torch.float, device=device
@@ -413,17 +424,30 @@ def eval_rollout(
 
     # cannot step higher than model episode len, as timestep embeddings will crash
     episode_return, episode_len = 0.0, 0.0
+    #returns = returns[:,:]
     for step in range(model.episode_len):
         # first select history up to step, then select last seq_len states,
         # step + 1 as : operator is not inclusive, last action is dummy with zeros
         # (as model will predict last, actual last values are not important)
+#         print("state")
+#         print(states.shape)
+#         print( states[:, : step + 1][:, -model.seq_len :].shape)
+#         print("action")
+#         print(actions.shape)
+#         print( actions[:, : step + 1][:, -model.seq_len :].shape)
+#         print("returns")
+#         print(returns.shape)
+#         print(returns[:, : step + 1][:, -model.seq_len :].shape)
         predicted_actions = model(  # fix this noqa!!!
             states[:, : step + 1][:, -model.seq_len :],  # noqa
             actions[:, : step + 1][:, -model.seq_len :],  # noqa
             returns[:, : step + 1][:, -model.seq_len :],  # noqa
             time_steps[:, : step + 1][:, -model.seq_len :],  # noqa
         )
-        predicted_action = predicted_actions[0, -1].cpu().numpy()
+       # print("Predict on test: ")
+      #  print(predicted_actions)
+        predicted_action = predicted_actions.argmax(axis = -1)[0, -1].cpu().numpy()
+       # print(predicted_action)
         next_state, reward, done, info = env.step(predicted_action)
         # at step t, we predict a_t, get s_{t + 1}, r_{t + 1}
         actions[:, step] = torch.as_tensor(predicted_action)
@@ -456,17 +480,29 @@ def train(config: TrainConfig):
         num_workers=config.num_workers,
     )
     # evaluation environment with state & reward preprocessing (as in dataset above)
+    STACK_LEN = 4
+    radius = 10
+    img_size = radius*2 + 1
+    gc = GridConfig(seed=None, num_agents=1, max_episode_steps=64, obs_radius=radius, size=16, density=0.3)
+    env = ObsActionWrapper(
+    gym.make('POMAPF-v0', grid_config=gc, with_animations=True, auto_reset=False, egocentric_idx=None,
+                 observation_type='MAPF'))
+    env = FrameStack(env, num_stack=STACK_LEN)
+    env = RavelFrameStack(env)
+    env = RewardLogger(env)
+  #  print(env.observation_space)
     eval_env = wrap_env(
-        env=gym.make(config.env_name),
+        env=env,
         state_mean=dataset.state_mean,
         state_std=dataset.state_std,
         reward_scale=config.reward_scale,
     )
     # model & optimizer & scheduler setup
     config.state_dim = eval_env.observation_space.shape[0]
-    config.action_dim = eval_env.action_space.shape[0]
+    config.action_dim = 1
     model = DecisionTransformer(
         state_dim=config.state_dim,
+        state_shape = eval_env.observation_space.shape,
         action_dim=config.action_dim,
         embedding_dim=config.embedding_dim,
         seq_len=config.seq_len,
@@ -511,9 +547,22 @@ def train(config: TrainConfig):
             time_steps=time_steps,
             padding_mask=padding_mask,
         )
-        loss = F.mse_loss(predicted_actions, actions.detach(), reduction="none")
+       # print(predicted_actions[:3,:3])
+       # print(actions.shape)
+       # print("Predict on train: ")
+       # print(predicted_actions)
+        predicted_actions = predicted_actions.reshape(64,20,5).to(torch.float32).reshape(-1,5)
+        actions_original = F.one_hot(actions.to(torch.int64), num_classes=5).reshape(-1,5)
+        
+        predicted_action_ = predicted_actions.cpu().detach().numpy()
+      #  print(predicted_action_)
+       # print(predicted_actions.shape)
+       # print(actions_original.shape)
+       # print(mask.unsqueeze(-1).shape)
+        loss = F.cross_entropy(predicted_actions, actions_original.to(torch.float32), reduction="none")
+       # print(loss.shape)
         # [batch_size, seq_len, action_dim] * [batch_size, seq_len, 1]
-        loss = (loss * mask.unsqueeze(-1)).mean()
+        loss = (loss.reshape(64,20,1) * mask.unsqueeze(-1)).mean()
 
         optim.zero_grad()
         loss.backward()
