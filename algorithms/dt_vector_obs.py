@@ -41,7 +41,7 @@ class TrainConfig:
     betas: Tuple[float, float] = (0.9, 0.999)
     weight_decay: float = 1e-4
     clip_grad: Optional[float] = 0.25
-    batch_size: int = 64
+    batch_size: int = 128
     update_steps: int = 100_000
     warmup_steps: int = 10_000
     reward_scale: float = 1
@@ -177,12 +177,11 @@ class SequenceDataset(IterableDataset):
     def __prepare_sample(self, traj_idx, start_idx):
         traj = self.dataset[traj_idx]
         # https://github.com/kzl/decision-transformer/blob/e2d82e68f330c00f763507b3b01d774740bee53f/gym/experiment.py#L128 # noqa
-        states = traj["observations"][start_idx : start_idx + self.seq_len]
-        actions = traj["actions"][start_idx : start_idx + self.seq_len]
-        returns = traj["returns"][start_idx : start_idx + self.seq_len]
+        states = traj["observations"][start_idx: start_idx + self.seq_len]
+        actions = traj["actions"][start_idx: start_idx + self.seq_len]
+        returns = traj["returns"][start_idx: start_idx + self.seq_len]
         time_steps = np.arange(start_idx, start_idx + self.seq_len)
-        #print(self.state_mean.shape)
-       # print(states.shape)
+
         states = (states - self.state_mean) / self.state_std
         returns = returns * self.reward_scale
 
@@ -194,14 +193,12 @@ class SequenceDataset(IterableDataset):
         mask = np.hstack(
             [np.ones(states.shape[0]), np.zeros(self.seq_len - states.shape[0])]
         )
-        #if 0 in actions:
-          #  raise Exception(actions)
         return states, actions, returns, time_steps, mask
 
     def __iter__(self):
         while True:
             traj_idx = np.random.choice(len(self.dataset), p=self.sample_prob)
-            start_idx = random.randint(0, (self.dataset[traj_idx]["rewards"].shape[0]-1-self.seq_len))
+            start_idx = random.randint(0, self.dataset[traj_idx]["rewards"].shape[0] - 1)
             yield self.__prepare_sample(traj_idx, start_idx)
 
 
@@ -463,6 +460,7 @@ def train(config: TrainConfig):
         reward_scale=config.reward_scale,
     )
     # model & optimizer & scheduler setup
+    print( eval_env.observation_space.shape)
     config.state_dim = eval_env.observation_space.shape[1]
    # print(config.state_dim )
   #  raise Exception(eval_env.action_space.shape)
@@ -508,7 +506,7 @@ def train(config: TrainConfig):
         padding_mask = ~mask.to(torch.bool)
       #  actions = actions.detach()
     #    print(actions)
-        actions_original = F.one_hot(actions.to(torch.int64), num_classes=5).reshape(64, config.seq_len, 5)
+        actions_original = F.one_hot(actions.to(torch.int64), num_classes=5).reshape(config.batch_size, config.seq_len, 5)
 
         predicted_actions = model(
             states=states,
