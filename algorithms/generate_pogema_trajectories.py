@@ -6,7 +6,7 @@ from tqdm import tqdm
 from dt import discounted_cumsum
 from collections import Counter
 import gc
-
+import sys
 
 def distance_to_goal(obs):
     ax, ay = np.asarray(obs[1].shape) // 2
@@ -27,7 +27,7 @@ def episode_rewards_by_obs(episode_observation):
         reward = -0.0035
         if dist < min_dist:
             min_dist = dist
-            reward = 0.1
+            reward = 0.01
         new_rewards.append(reward)
     new_rewards[-1] = 1
     # print(new_rewards)
@@ -36,8 +36,8 @@ def episode_rewards_by_obs(episode_observation):
 
 
 def load_pogema_trajectories(use_image=True):
-    dataset = d3rlpy.dataset.MDPDataset.load("../data/mixed_dataset_10_0_27910.h5")
-    dataset, test_episodes = train_test_split(dataset, test_size=0.3, shuffle=True)
+    dataset = d3rlpy.dataset.MDPDataset.load("./data/mixed_dataset_10_0_55000.h5")
+    dataset, test_episodes = train_test_split(dataset, test_size=0.4, shuffle=True)
     traj, traj_len = [], []
 
     data_, episode_step = defaultdict(list), 0
@@ -78,7 +78,7 @@ def load_pogema_trajectories(use_image=True):
             #   print("-------------")
             episode_data["rewards"][reward_mask] = -0.05
             #   episode_data["rewards"][-1] = 1.5
-            episode_data["returns"] = episode_data["rewards"]
+            episode_data["returns"] = discounted_cumsum(episode_data["rewards"], 0.1)
             episode_len = len(episode.rewards[mask][i:i + 20])
             traj.append(episode_data)
             traj_len.append(episode_len)
@@ -100,6 +100,8 @@ def load_pogema_trajectories(use_image=True):
         "obs_std": np.asarray([std_val + 1e-6 for _ in range(obs_shape)]).reshape(1, -1),
         "traj_lens": np.array(traj_len),
     }
+    print(sys.getsizeof(traj))
+    print(traj[0]["observations"].nbytes * len(traj))
     return traj, info
 
 

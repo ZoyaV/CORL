@@ -19,22 +19,22 @@ import wandb
 import d3rlpy
 from sklearn.model_selection import train_test_split
 
-sys.path.append("./pogema-appo")
-print("--------------")
-import os
-cwd = os.getcwd()
-print(cwd)
-print("--------------")
-from pomapf.wrappers import MatrixObservationWrapper
-import gym
-# noinspection PyUnresolvedReferences
-import pomapf
-from pogema import GridConfig
-from gym.wrappers import FrameStack
+# sys.path.append("./pogema-appo")
+# print("--------------")
+# import os
+# cwd = os.getcwd()
+# print(cwd)
+# print("--------------")
+# from pomapf.wrappers import MatrixObservationWrapper
+# import gym
+# # noinspection PyUnresolvedReferences
+# import pomapf
+# from pogema import GridConfig
+# from gym.wrappers import FrameStack
 
-from torch import nn
-import torch 
-import numpy as np
+# from torch import nn
+# import torch 
+# import numpy as np
 
   
 @dataclass
@@ -65,7 +65,7 @@ class TrainConfig:
     reward_scale: float = 1
     num_workers: int = 4
     # evaluation params
-    target_returns: Tuple[float, ...] = (12000.0, 6000.0)
+    target_returns: Tuple[float, ...] = (3, 1)
     eval_episodes: int = 10
     eval_every: int = 1500
     # general params

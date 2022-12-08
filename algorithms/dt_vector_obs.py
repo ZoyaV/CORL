@@ -29,7 +29,7 @@ class TrainConfig:
     embedding_dim: int = 512
     num_layers: int = 1
     num_heads: int = 1
-    seq_len: int = 5
+    seq_len: int = 13
     episode_len: int = 200
     attention_dropout: float = 0.1
     residual_dropout: float = 0.1
@@ -37,17 +37,17 @@ class TrainConfig:
     max_action: float = 1.0
     # training params
     env_name: str = "POMAF"
-    learning_rate: float = 1e-4
+    learning_rate: float = 1e-3
     betas: Tuple[float, float] = (0.9, 0.999)
     weight_decay: float = 1e-4
     clip_grad: Optional[float] = 0.25
-    batch_size: int = 128
+    batch_size: int = 32
     update_steps: int = 100_000
     warmup_steps: int = 10_000
     reward_scale: float = 1
-    num_workers: int = 4
+    num_workers: int = 1
     # evaluation params
-    target_returns: Tuple[float, ...] = (12000.0, 6000.0)
+    target_returns: Tuple[float, ...] = (5.0, 3.0, 1.0)
     eval_episodes: int = 100
     eval_every: int = 5000
     # general params

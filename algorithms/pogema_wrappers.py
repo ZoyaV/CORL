@@ -1,8 +1,19 @@
 import numpy as np
-from pomapf.wrappers import MatrixObservationWrapper
+
 import gym
 # noinspection PyUnresolvedReferences
+import os
+cwd = os.listdir()
+print("--------------")
+print(cwd)
+print("--------------")
+print("--------------")
+print("--------------")
+print("--------------")
+import sys
+sys.path.append(".")
 import pomapf
+from pomapf.wrappers import MatrixObservationWrapper
 from pogema import GridConfig
 from gym.wrappers import FrameStack
 
