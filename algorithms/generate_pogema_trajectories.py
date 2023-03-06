@@ -3,7 +3,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 import d3rlpy
 from tqdm import tqdm
-from dt import discounted_cumsum
+from utils import discounted_cumsum
 from collections import Counter
 import gc
 import sys
@@ -37,7 +37,7 @@ def episode_rewards_by_obs(episode_observation):
 
 
 def load_pogema_trajectories(use_image=True):
-    dataset = d3rlpy.dataset.MDPDataset.load("./data/test_mixed_dataset_10_0_40000.h5")
+    dataset = d3rlpy.dataset.MDPDataset.load("./data/test_mixed_dataset_10_0_40000.h5")[:1000]
    # additional = d3rlpy.dataset.MDPDataset.load("./data/mixed_dataset_10_0_27910.h5")
   # dataset.extend(additional)
   #  dataset, test_episodes = train_test_split(dataset, test_size=0.02, shuffle=True)

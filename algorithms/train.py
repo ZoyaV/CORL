@@ -17,7 +17,11 @@ from generate_pogema_trajectories import load_pogema_trajectories
 from pogema_wrappers import init_vactorbased_pogema
 from sequence_dataset import SequenceDataset
 from dt import DecisionTransformer
-from utils import wandb_init, wrap_env, pad_along_axis, discounted_cumsum
+from utils import wandb_init, wrap_env, pad_along_axis, discounted_cumsum, set_seed
+from config import TrainConfig
+import wandb
+from tqdm.auto import tqdm, trange  # noqa
+
 # Training and evaluation logic
 @torch.no_grad()
 def eval_rollout(
