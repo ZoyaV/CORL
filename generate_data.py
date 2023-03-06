@@ -32,6 +32,8 @@ if __name__ == "__main__":
     parser.add_argument('framestack_size', type=int)
     parser.add_argument('load', type=bool, default=False)
     parser.add_argument('fixed_map', type=bool, default=False)
+    parser.add_argument('one_map_steps', type=int, default=100)
+    parser.add_argument('changes_count', type=int, default=100)
     args = parser.parse_args()
 
     os.makedirs("./observations_", exist_ok=True)
@@ -39,7 +41,7 @@ if __name__ == "__main__":
     full_obs, full_actions, full_reward, full_trajectories = [], [], [], []
     grid_kind = load_maps()
 
-    for i in tqdm(range(2000)):
+    for i in tqdm(range(args.changes_count)):
         if args.fixed_map:
             grid = grid_kind[i % 3]
             gc = GridConfig(seed=None, num_agents=num_agents, max_episode_steps=128, \
@@ -55,7 +57,7 @@ if __name__ == "__main__":
                                                                grid_config=gc, dat_name=i, \
                                                                obs_shape=(1, 3 * 21 * 21), \
                                                                num_agents=3, \
-                                                               total_steps_needed=1000, \
+                                                               total_steps_needed=args.one_map_steps, \
                                                                framestack_size=args.framestack_size)
         full_obs.append(obs)
         full_actions.append(actions)
