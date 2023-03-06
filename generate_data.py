@@ -41,7 +41,7 @@ if __name__ == "__main__":
     full_obs, full_actions, full_reward, full_trajectories = [], [], [], []
     grid_kind = load_maps()
     num_agents = 3
-    
+
     for i in tqdm(range(args.changes_count)):
         if args.fixed_map:
             grid = grid_kind[i % 3]
@@ -51,7 +51,7 @@ if __name__ == "__main__":
             gc = GridConfig(seed=None, num_agents=num_agents, max_episode_steps=128, \
                             obs_radius=10, auto_reset=False, observation_type='MAPF', size=16, density=0.3)
         if args.load:
-            with open(f'observations_/{args.file_name}//{i}.pickle', 'rb') as f:
+            with open(f'observations_/{args.file_name}/{i}.pickle', 'rb') as f:
                 obs, actions, reward, trajectories = pickle.load(f)
         else:
             obs, actions, reward, trajectories = generate_data(path_to_log=args.file_name,
@@ -70,5 +70,5 @@ if __name__ == "__main__":
     full_trajectories = np.concatenate(full_trajectories, axis=0)
     full_actions = np.concatenate(full_actions, axis=0)
 
-    with open(f'observations_/{args.file_name}//{args.file_name}.pickle', 'wb') as f:
+    with open(f'observations_/{args.file_name}/{args.file_name}.pickle', 'wb') as f:
         pickle.dump([full_obs, full_actions, full_reward, full_trajectories], f)
