@@ -29,25 +29,10 @@ import pickle
 class RandActionWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
-#         print(len(self.config.MOVES))
-#         #self.action_space = gym.spaces.Box(0.0, 1.0, shape = (1,))
         full_size = self.config.obs_radius * 2 + 1
-#         #obs for img 
         self.observation_space = gym.spaces.Box(0.0, 1.0, shape=(12,full_size, full_size,))
-#         #obs for line 
-#         #self.observation_space = gym.spaces.Box(0.0, 1.0, shape=(3*full_size*full_size,))
-
     def reset(self, **kwargs):
         obs = self.env.reset()
-#         obs = MatrixObservationWrapper.to_matrix(self.env.reset())
-#         agents = len(obs)
-#         obs_ = []
-#         for i in range(agents):
-#             ob = obs[i]['obs']
-#             ob = np.asarray(ob)
-#             ob = ob.astype(np.uint8)
-#             #obs_.append(ob.reshape(-1,))
-#             obs_.append(ob)
         return np.asarray(obs[0])
 
     def step(self, action):
@@ -133,15 +118,6 @@ if __name__ == "__main__":
     radius = 10
     img_size = radius*2 + 1
     gc = GridConfig(seed=None, num_agents=1, max_episode_steps=64, obs_radius=radius, size=16, density=0.3)
-#    env = Obs1DActionWrapper(
-    #    gym.make('POMAPF-v0', grid_config=gc, with_animations=False, auto_reset=False, egocentric_idx=None,
-        #        observation_type='MAPF'))
-   # env = FrameStack(env, num_stack=STACK_LEN)
- #   env = RavelFrameStack(env)
-   # env = RandActionWrapper(env)
-    
     original  = prepare_original_mdp_pickle("", count = 500000)
-    #random =  prepare_random(env, count = 100)
     mix_by_episode(original, [], prop = [1, 0.0], episode_count=55000)
-#     mix_by_episode(original, random, prop = [0.7, 0.3], episode_count=5000)
-#     mix_by_episode(original, random, prop = [0.9, 0.1], episode_count=5000)
+

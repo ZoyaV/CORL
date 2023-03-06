@@ -1,12 +1,12 @@
-# from agents.prioritzied import Prioritized, PrioritizedConfig
-# from agents.replan import RePlanConfig, RePlan
-# import gym
-# # noinspection PyUnresolvedReferences
-# import pomapf
-# from pogema.animation import AnimationMonitor, AnimationConfig
-# from pogema import GridConfig, pogema_v0
-# import h5py
-# from pomapf.wrappers import MatrixObservationWrapper
+from agents.prioritzied import Prioritized, PrioritizedConfig
+from agents.replan import RePlanConfig, RePlan
+import gym
+# noinspection PyUnresolvedReferences
+import pomapf
+from pogema.animation import AnimationMonitor, AnimationConfig
+from pogema import GridConfig, pogema_v0
+import h5py
+from pomapf.wrappers import MatrixObservationWrapper
 import numpy as np
 import datetime
 from multiprocessing import Pool
@@ -15,11 +15,6 @@ import h5py
 import yaml
 from tqdm import tqdm
 import pickle
-
-def load_maps():
-    with open('maps.yaml') as f:
-        q = yaml.safe_load(f)
-    return list(q.values())
 
 def drop_global_information(observations):
     for agent_idx, obs in enumerate(observations):
@@ -59,15 +54,10 @@ def obs_to_framestack(observation, t, obs_shape = (3, 21, 21), framestack_size =
         full_framestack = np.append(full_framestack, framestask, axis = 0)
     return full_framestack
     
-def example(path_to_log, grid, dat_name, obs_shape = (3, 21, 21), num_agents = 3, 
-            total_steps_needed = 80000, log = False, framestack_size = 4):
+def generate_data(path_to_log, grid_config, dat_name, obs_shape = (3, 21, 21), num_agents = 3,
+            total_steps_needed = 80000, log = False, framestack_size = 4, checkpoints = True):
 
-#     gc = GridConfig(seed=None, num_agents=num_agents, max_episode_steps=128, \
-#                     map = grid, obs_radius=10, auto_reset=False, observation_type='MAPF') 
-#     gc = GridConfig(seed=None, num_agents=num_agents, max_episode_steps=128, \
-#                     obs_radius=10, auto_reset=False, observation_type='MAPF',size=16, density=0.3) 
-     
-    env = pogema_v0(grid_config=gc)
+    env = pogema_v0(grid_config=grid_config)
     print(env.observation_space)
     # set egocentric to None to show from all agents perspective
     env = AnimationMonitor(env=env, animation_config=AnimationConfig(egocentric_idx=0))
@@ -85,12 +75,11 @@ def example(path_to_log, grid, dat_name, obs_shape = (3, 21, 21), num_agents = 3
     total_steps = 0
     pbar = tqdm(total = total_steps_needed)
     while total_steps <= total_steps_needed:
-        #print(f"Total steps: {total_steps}")
         obs = env.reset()
         observations = MatrixObservationWrapper.to_matrix(obs)
         algo.after_reset()
         dones = [False, ...]
-        
+        # One episode
         while not all(dones):
             action = algo.act(obs, None, dones)
             obs, rewards, dones, info = env.step(action)
@@ -101,13 +90,12 @@ def example(path_to_log, grid, dat_name, obs_shape = (3, 21, 21), num_agents = 3
                     continue  
                 total_steps += 1
                 pbar.update(1)
-              #  print(observations[i]['obs'].shape)
                 obs_all_agent[i].append(observations[i]['obs'])
                 reward_all_agent[i].append(rewards[i])
                 done_all_agent[i].append(dones[i])
                 actions_all_agent[i].append(action[i])
     pbar.close()
-   # Observation to framestack
+
     for i in range(num_agents):
         framestack_obs_all_agent[i] = obs_to_framestack(obs_all_agent[i], done_all_agent[i], 
                                                         obs_shape = obs_shape, framestack_size = framestack_size)        
@@ -122,9 +110,10 @@ def example(path_to_log, grid, dat_name, obs_shape = (3, 21, 21), num_agents = 3
         print("Final trajectories shape:", full_trajectories.shape)
         print("Final actions shape: ", full_actions.shape)    
         print(f"Check reward/count of episode: {np.sum(full_reward)}/{ np.sum(full_trajectories)}")
-    
-    with open(f'observations_/{path_to_log}/{dat_name}.pickle', 'wb') as f:
-        pickle.dump([full_obs, full_actions, full_reward, full_trajectories], f)
+
+    if checkpoints:
+        with open(f'observations_/{path_to_log}/{dat_name}.pickle', 'wb') as f:
+            pickle.dump([full_obs, full_actions, full_reward, full_trajectories], f)
     
     return full_obs, full_actions, full_reward, full_trajectories
                 

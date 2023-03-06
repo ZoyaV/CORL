@@ -178,11 +178,11 @@ class UseOneAgent(gym.Wrapper):
         return observations[0], reward, done, info
 
 
-def init_imagebased_pogema(stack_len, radius, img_size, num_agents):
+def init_imagebased_pogema(stack_len, radius, num_agents):
     # Init image pogema
     grid = load_maps()[0]
     gc = GridConfig(seed=None, num_agents=num_agents, max_episode_steps=128, \
-                    map = grid, obs_radius=10, auto_reset=False, observation_type='MAPF') 
+                    map = grid, obs_radius=radius, auto_reset=False, observation_type='MAPF')
 
     env = pogema_v0(grid_config=gc)
     
@@ -192,18 +192,16 @@ def init_imagebased_pogema(stack_len, radius, img_size, num_agents):
     return env
 
 
-def init_vactorbased_pogema(stack_len, radius, img_size, num_agents, wandb = None, vis = False):
+def init_vactorbased_pogema(stack_len, radius, num_agents, wandb = None, vis = False, use_maps = False):
     # Init image pogema
 
-#     gc = GridConfig(seed=None, num_agents=num_agents, max_episode_steps=64, obs_radius=radius, size=16, density=0.3)
-#     env = gym.make('POMAPF-v0', grid_config=gc, with_animations=True, auto_reset=False, egocentric_idx=None,
-#                    observation_type='MAPF')
-#     grid = load_maps()[0]
-#     gc = GridConfig(seed=None, num_agents=num_agents, max_episode_steps=500, \
-#                   map = grid, obs_radius=10, auto_reset=False, observation_type='MAPF') 
-    
-    gc = GridConfig(seed=None, num_agents=num_agents, max_episode_steps=128, \
-                    obs_radius=10, auto_reset=False, observation_type='MAPF', size=16, density=0.3) 
+    if use_maps:
+        grid = load_maps()[0]
+        gc = GridConfig(seed=None, num_agents=num_agents, max_episode_steps=500, \
+                      map = grid, obs_radius=radius, auto_reset=False, observation_type='MAPF')
+    else:
+        gc = GridConfig(seed=None, num_agents=num_agents, max_episode_steps=128, \
+                        obs_radius=radius, auto_reset=False, observation_type='MAPF', size=16, density=0.3)
 
     env = pogema_v0(grid_config=gc)
     if vis:
@@ -215,7 +213,6 @@ def init_vactorbased_pogema(stack_len, radius, img_size, num_agents, wandb = Non
     env = RavelFrameStack(env, image_obs=False)
     if isinstance(wandb, type(None)):
         pass
-       # env = RewardLogger(env, wandb)
     return env
 
 
