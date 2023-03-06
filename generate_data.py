@@ -18,7 +18,7 @@ from tqdm import tqdm
 from generate_offline_pogema import generate_data
 import argparse
 from pogema import GridConfig
-
+import yaml
 
 def load_maps():
     with open('maps.yaml') as f:
