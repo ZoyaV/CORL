@@ -40,7 +40,8 @@ if __name__ == "__main__":
     os.makedirs(f"./observations_/{args.file_name}", exist_ok=True)
     full_obs, full_actions, full_reward, full_trajectories = [], [], [], []
     grid_kind = load_maps()
-
+    num_agents = 3
+    
     for i in tqdm(range(args.changes_count)):
         if args.fixed_map:
             grid = grid_kind[i % 3]
