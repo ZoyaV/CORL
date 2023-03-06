@@ -12,11 +12,14 @@ print("--------------")
 print("--------------")
 import sys
 sys.path.append(".")
+sys.path.append("..")
 import pomapf
+from typing import Union
 from pomapf.wrappers import MatrixObservationWrapper
-from pogema import GridConfig
+from pogema import GridConfig, pogema_v0
 from gym.wrappers import FrameStack
-
+from generate_offline_pogema import load_maps
+from pogema.animation import AnimationMonitor, AnimationConfig
 
 class RewardLogger(gym.Wrapper):
     total_episodes = 0
@@ -54,7 +57,8 @@ class RewardLogger(gym.Wrapper):
 class Obs1DActionWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
-        full_size = self.config.obs_radius * 2 + 1
+        #TODO: 10 - is radius
+        full_size = 10 * 2 + 1
         # obs for line
         self.observation_space = gym.spaces.Box(0.0, 1.0, shape=(3 * full_size * full_size,))
 
@@ -86,13 +90,13 @@ class Obs1DActionWrapper(gym.Wrapper):
             ob = np.asarray(ob)
             ob = ob.astype(np.uint8)
             obs_.append(ob.reshape(-1, ))
-        return np.asarray(obs_), reward[0], done[0], info[0]
+        return np.asarray(obs_), reward, done, info
 
 
 class Obs2DActionWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
-        full_size = self.config.obs_radius * 2 + 1
+        full_size = 10 * 2 + 1
         # obs for img
         self.observation_space = gym.spaces.Box(0.0, 1.0, shape=(3, full_size, full_size,))
 
@@ -114,7 +118,7 @@ class Obs2DActionWrapper(gym.Wrapper):
 
     def step(self, action):
      #   print("Actions for pogema: ", action)
-        if not isinstance(action, list):
+        if not (isinstance(action, list) or  isinstance(action, np.ndarray)):
             action = [action]
         action = np.asarray(action).astype(int)
         observations, reward, done, info = self.env.step(action)
@@ -127,7 +131,8 @@ class Obs2DActionWrapper(gym.Wrapper):
             ob = ob.astype(np.uint8)
             # obs_.append(ob.reshape(-1,))
             obs_.append(ob)
-        return np.asarray(obs_), reward[0], done[0], info[0]
+       # print(done)
+        return np.asarray(obs_), reward, done, info
 
 
 def reshape_obs(obs, image=True):
@@ -168,6 +173,7 @@ class RavelFrameStack(gym.Wrapper):
     def step(self, action):
         observations, reward, done, info = self.env.step(action)
         observations = reshape_obs(np.asarray(observations), image=self.image_obs)
+       # print(done)
         return observations, reward, done, info
 
 
@@ -182,21 +188,35 @@ class UseOneAgent(gym.Wrapper):
 
 def init_imagebased_pogema(stack_len, radius, img_size, num_agents):
     # Init image pogema
-    gc = GridConfig(seed=None, num_agents=num_agents, max_episode_steps=64, obs_radius=radius, size=16, density=0.3)
-    env = gym.make('POMAPF-v0', grid_config=gc, with_animations=True, auto_reset=False, egocentric_idx=None,
-                   observation_type='MAPF')
+    grid = load_maps()[0]
+    gc = GridConfig(seed=None, num_agents=num_agents, max_episode_steps=128, \
+                    map = grid, obs_radius=10, auto_reset=False, observation_type='MAPF') 
+
+    env = pogema_v0(grid_config=gc)
+    
     env = Obs2DActionWrapper(env)
     env = FrameStack(env, num_stack=stack_len)
     env = RavelFrameStack(env)
     return env
 
 
-def init_vactorbased_pogema(stack_len, radius, img_size, num_agents, wandb = None):
+def init_vactorbased_pogema(stack_len, radius, img_size, num_agents, wandb = None, vis = False):
     # Init image pogema
 
-    gc = GridConfig(seed=None, num_agents=num_agents, max_episode_steps=64, obs_radius=radius, size=16, density=0.3)
-    env = gym.make('POMAPF-v0', grid_config=gc, with_animations=True, auto_reset=False, egocentric_idx=None,
-                   observation_type='MAPF')
+#     gc = GridConfig(seed=None, num_agents=num_agents, max_episode_steps=64, obs_radius=radius, size=16, density=0.3)
+#     env = gym.make('POMAPF-v0', grid_config=gc, with_animations=True, auto_reset=False, egocentric_idx=None,
+#                    observation_type='MAPF')
+#     grid = load_maps()[0]
+#     gc = GridConfig(seed=None, num_agents=num_agents, max_episode_steps=500, \
+#                   map = grid, obs_radius=10, auto_reset=False, observation_type='MAPF') 
+    
+    gc = GridConfig(seed=None, num_agents=num_agents, max_episode_steps=128, \
+                    obs_radius=10, auto_reset=False, observation_type='MAPF', size=16, density=0.3) 
+
+    env = pogema_v0(grid_config=gc)
+    if vis:
+        env = AnimationMonitor(env=env, animation_config=AnimationConfig(egocentric_idx=None))
+            
     env = Obs2DActionWrapper(env)
     env = FrameStack(env, num_stack=stack_len)
 

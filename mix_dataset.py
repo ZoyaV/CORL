@@ -24,6 +24,7 @@ from argparse import ArgumentParser
 from algorithms.pogema_wrappers import Obs1DActionWrapper, RavelFrameStack
 #from model import CustomEncoderFactory
 import wandb
+import pickle
 
 class RandActionWrapper(gym.Wrapper):
     def __init__(self, env):
@@ -64,6 +65,13 @@ def prepare_original_mdp(file, count):
     observations = observations.astype(np.uint8)    
     return observations,actions,rewards,terminals
 
+def prepare_original_mdp_pickle(file, count):
+   # dataset = h5py.File(file, "r")
+   # count = count
+    with open('observations_/new_generator_fs4/new_generator_fs4.pickle', 'rb') as f:
+        observations,actions,rewards,terminals = pickle.load(f)
+    observations = observations.astype(np.uint8)    
+    return observations,actions,rewards,terminals
 
 def prepare_random(env, count):
     random_policy = d3rlpy.algos.DiscreteRandomPolicy()
@@ -116,7 +124,7 @@ def mix_by_episode(original, random, prop = [0.9, 0.1], episode_count=1000):
     print("Reward sum: ", np.sum(dataset_orig.rewards))
     
     os.makedirs("./data", exist_ok=True) 
-    dataset_orig.dump(f"./data/mixed_dataset_{int(prop[0]*10)}_{int(prop[1]*10)}_{episode_count}.h5")
+    dataset_orig.dump(f"./data/4d_dataset_{int(prop[0]*10)}_{int(prop[1]*10)}_{episode_count}.h5")
     return dataset_orig
 
 
@@ -132,8 +140,8 @@ if __name__ == "__main__":
  #   env = RavelFrameStack(env)
    # env = RandActionWrapper(env)
     
-    original  = prepare_original_mdp("data0.hdf5", count = 500000)
+    original  = prepare_original_mdp_pickle("", count = 500000)
     #random =  prepare_random(env, count = 100)
-    mix_by_episode(original, [], prop = [1, 0.0], episode_count=27000)
+    mix_by_episode(original, [], prop = [1, 0.0], episode_count=55000)
 #     mix_by_episode(original, random, prop = [0.7, 0.3], episode_count=5000)
 #     mix_by_episode(original, random, prop = [0.9, 0.1], episode_count=5000)

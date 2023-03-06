@@ -27,9 +27,9 @@ class TrainConfig:
     name: str = "DT"
     # model params
     embedding_dim: int = 512
-    num_layers: int = 1
-    num_heads: int = 1
-    seq_len: int = 13
+    num_layers: int = 8
+    num_heads: int = 8
+    seq_len: int = 20
     episode_len: int = 200
     attention_dropout: float = 0.1
     residual_dropout: float = 0.1
@@ -37,17 +37,17 @@ class TrainConfig:
     max_action: float = 1.0
     # training params
     env_name: str = "POMAF"
-    learning_rate: float = 1e-3
+    learning_rate: float = 1e-4
     betas: Tuple[float, float] = (0.9, 0.999)
     weight_decay: float = 1e-4
     clip_grad: Optional[float] = 0.25
-    batch_size: int = 32
+    batch_size: int = 128
     update_steps: int = 100_000
     warmup_steps: int = 10_000
     reward_scale: float = 1
     num_workers: int = 1
     # evaluation params
-    target_returns: Tuple[float, ...] = (5.0, 3.0, 1.0)
+    target_returns: Tuple[float, ...] = (1.0, 2.0)
     eval_episodes: int = 100
     eval_every: int = 5000
     # general params
@@ -126,40 +126,6 @@ def discounted_cumsum(x: np.ndarray, gamma: float) -> np.ndarray:
         cumsum[t] = x[t] + gamma * cumsum[t + 1]
     return cumsum
 
-#
-# def load_d4rl_trajectories(
-#     env_name: str, gamma: float = 1.0
-# ) -> Tuple[List[DefaultDict[str, np.ndarray]], Dict[str, Any]]:
-#     dataset = gym.make(env_name).get_dataset()
-#     traj, traj_len = [], []
-#
-#     data_, episode_step = defaultdict(list), 0
-#     for i in trange(dataset["rewards"].shape[0], desc="Processing trajectories"):
-#         data_["observations"].append(dataset["observations"][i])
-#         data_["actions"].append(dataset["actions"][i])
-#         data_["rewards"].append(dataset["rewards"][i])
-#
-#         if dataset["terminals"][i] or dataset["timeouts"][i]:
-#             episode_data = {k: np.array(v, dtype=np.float32) for k, v in data_.items()}
-#             # return-to-go if gamma=1.0, just discounted returns else
-#             episode_data["returns"] = discounted_cumsum(
-#                 episode_data["rewards"], gamma=gamma
-#             )
-#             traj.append(episode_data)
-#             traj_len.append(episode_step)
-#             # reset trajectory buffer
-#             data_, episode_step = defaultdict(list), 0
-#
-#         episode_step += 1
-#
-#     # needed for normalization, weighted sampling, other stats can be added also
-#     info = {
-#         "obs_mean": dataset["observations"].mean(0, keepdims=True),
-#         "obs_std": dataset["observations"].std(0, keepdims=True) + 1e-6,
-#         "traj_lens": np.array(traj_len),
-#     }
-#     return traj, info
-
 from generate_pogema_trajectories import load_pogema_trajectories
 
 class SequenceDataset(IterableDataset):
@@ -180,6 +146,7 @@ class SequenceDataset(IterableDataset):
         states = traj["observations"][start_idx: start_idx + self.seq_len]
         actions = traj["actions"][start_idx: start_idx + self.seq_len]
         returns = traj["returns"][start_idx: start_idx + self.seq_len]
+        
         time_steps = np.arange(start_idx, start_idx + self.seq_len)
 
         states = (states - self.state_mean) / self.state_std
@@ -221,9 +188,9 @@ class TransformerBlock(nn.Module):
             embedding_dim, num_heads, attention_dropout, batch_first=True
         )
         self.mlp = nn.Sequential(
-            nn.Linear(embedding_dim, 4 * embedding_dim),
+            nn.Linear(embedding_dim, 3 * embedding_dim),
             nn.GELU(),
-            nn.Linear(4 * embedding_dim, embedding_dim),
+            nn.Linear(3 * embedding_dim, embedding_dim),
             nn.Dropout(residual_dropout),
         )
         # True value indicates that the corresponding position is not allowed to attend
@@ -419,12 +386,12 @@ def eval_rollout(
         # at step t, we predict a_t, get s_{t + 1}, r_{t + 1}
         actions[:, step] = torch.as_tensor(predicted_action)
         states[:, step + 1] = torch.as_tensor(next_state)
-        returns[:, step + 1] = torch.as_tensor(returns[:, step] - reward)
+        returns[:, step + 1] = torch.as_tensor(returns[:, step] - torch.from_numpy(np.asarray(reward)).to("cuda"))
 
-        episode_return += reward
+        episode_return += np.mean(reward)
         episode_len += 1
-
-        if done:
+       # print(done)
+        if np.all(done):
             break
 
     return episode_return, episode_len
@@ -448,16 +415,16 @@ def train(config: TrainConfig):
         num_workers=config.num_workers,
     )
     # evaluation environment with state & reward preprocessing (as in dataset above)
-    stack_len = 4
+    stack_len = 3
     radius = 10
     img_size = radius * 2 + 1
     num_agents = 3
 
     eval_env = wrap_env(
-        env=init_vactorbased_pogema(stack_len, radius, img_size, num_agents, wandb),
+        env=init_vactorbased_pogema(stack_len, radius, img_size, num_agents, wandb, vis = False),
         state_mean=dataset.state_mean,
         state_std=dataset.state_std,
-        reward_scale=config.reward_scale,
+        reward_scale=config.reward_scale
     )
     # model & optimizer & scheduler setup
     print( eval_env.observation_space.shape)
