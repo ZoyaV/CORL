@@ -1,9 +1,11 @@
-from torch.utils.data import DataLoader, IterableDataset
-from generate_pogema_trajectories import load_pogema_trajectories
 import numpy as np
-from typing import Any, DefaultDict, Dict, List, Optional, Tuple, Union
 import random
+from torch.utils.data import DataLoader, IterableDataset
+from typing import Any, DefaultDict, Dict, List, Optional, Tuple, Union
+
+from generate_pogema_trajectories import load_pogema_trajectories
 from utils import pad_along_axis
+
 
 class SequenceDataset(IterableDataset):
     def __init__(self, env_name: str, seq_len: int = 10, reward_scale: float = 1.0):

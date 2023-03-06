@@ -1,7 +1,8 @@
 
-from torch import nn
-import torch 
 import numpy as np
+import torch
+from torch import nn
+
 
 def calc_num_elements(module, module_input_shape):
     shape_with_batch_dim = (1,) + module_input_shape

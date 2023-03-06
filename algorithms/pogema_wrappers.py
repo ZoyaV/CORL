@@ -1,15 +1,7 @@
-import numpy as np
-
 import gym
+import numpy as np
 # noinspection PyUnresolvedReferences
 import os
-cwd = os.listdir()
-print("--------------")
-print(cwd)
-print("--------------")
-print("--------------")
-print("--------------")
-print("--------------")
 import sys
 sys.path.append(".")
 sys.path.append("..")

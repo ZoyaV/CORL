@@ -1,26 +1,26 @@
-from typing import Any, DefaultDict, Dict, List, Optional, Tuple, Union
-from collections import defaultdict
-from dataclasses import asdict, dataclass
-import os
-import random
-import uuid
-
 import gym  # noqa
 import numpy as np
+import os
 import pyrallis
+import random
 import torch
 import torch.nn as nn
+import uuid
+from collections import defaultdict
+from dataclasses import asdict, dataclass
 from torch.nn import functional as F
 from torch.utils.data import DataLoader, IterableDataset
+from tqdm.auto import tqdm, trange  # noqa
+from typing import Any, DefaultDict, Dict, List, Optional, Tuple, Union
 
+import wandb
+from config import TrainConfig
+from dt import DecisionTransformer
 from generate_pogema_trajectories import load_pogema_trajectories
 from pogema_wrappers import init_vactorbased_pogema
 from sequence_dataset import SequenceDataset
-from dt import DecisionTransformer
-from utils import wandb_init, wrap_env, pad_along_axis, discounted_cumsum, set_seed
-from config import TrainConfig
-import wandb
-from tqdm.auto import tqdm, trange  # noqa
+from utils import discounted_cumsum, pad_along_axis, set_seed, wandb_init, wrap_env
+
 
 # Training and evaluation logic
 @torch.no_grad()

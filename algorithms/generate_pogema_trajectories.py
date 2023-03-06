@@ -1,12 +1,13 @@
-from collections import defaultdict
-import numpy as np
-from sklearn.model_selection import train_test_split
 import d3rlpy
-from tqdm import tqdm
-from utils import discounted_cumsum
-from collections import Counter
 import gc
+import numpy as np
 import sys
+from collections import Counter, defaultdict
+from sklearn.model_selection import train_test_split
+from tqdm import tqdm
+
+from utils import discounted_cumsum
+
 
 def distance_to_goal(obs):
    # print(obs[1].shape)

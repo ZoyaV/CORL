@@ -1,17 +1,17 @@
-from typing import Any, DefaultDict, Dict, List, Optional, Tuple, Union
-from collections import defaultdict
-from dataclasses import asdict, dataclass
-import os
-import random
-import uuid
-
 import gym  # noqa
 import numpy as np
+import os
 import pyrallis
+import random
 import torch
 import torch.nn as nn
+import uuid
+from collections import defaultdict
+from dataclasses import asdict, dataclass
 from torch.nn import functional as F  # noqa
 from torch.utils.data import DataLoader, IterableDataset
+from typing import Any, DefaultDict, Dict, List, Optional, Tuple, Union
+
 
 # Decision Transformer implementation
 class TransformerBlock(nn.Module):

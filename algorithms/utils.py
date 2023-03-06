@@ -1,12 +1,15 @@
-from typing import Any, DefaultDict, Dict, List, Optional, Tuple, Union
+import gym
 import numpy as np
 import os
-import torch
-import gym
-import wandb
 import random
+import torch
 import uuid
+from typing import Any, DefaultDict, Dict, List, Optional, Tuple, Union
+
 import wandb
+import wandb
+
+
 def set_seed(
     seed: int, env: Optional[gym.Env] = None, deterministic_torch: bool = False
 ):
